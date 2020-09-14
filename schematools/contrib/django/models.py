@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional, Tuple, Type
 
 from django.conf import settings
 from django.contrib.gis.db import models as gis_models
-from django.contrib.postgres.fields import ArrayField, JSONField
+from django.contrib.postgres.fields import ArrayField, JSONField, CITextField
 from django.db import models, transaction
 from django.utils.functional import cached_property
 from django.utils.translation import gettext_lazy as _
@@ -34,6 +34,7 @@ FORMAT_MODELS_LOOKUP = {
     "time": models.TimeField,
     "date-time": models.DateTimeField,
     "uri": models.URLField,
+    "citext": CITextField,
 }
 
 RD_NEW = CRS.from_string("EPSG:28992")  # Amersfoort / RD New

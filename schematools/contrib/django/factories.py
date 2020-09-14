@@ -151,6 +151,21 @@ class FieldMaker:
             field_cls = FORMAT_MODELS_LOOKUP[format_]
         return field_cls, args, kwargs
 
+    def handle_string(
+        self,
+        dataset: DatasetSchema,
+        field: DatasetFieldSchema,
+        field_cls,
+        *args,
+        **kwargs,
+    ) -> TypeAndSignature:
+        format_ = field.format
+        if format_ is not None:
+            if format_ == 'citext':
+                breakpoint(header="HOWOW")
+            field_cls = FORMAT_MODELS_LOOKUP[format_]
+        return field_cls, args, kwargs
+
     def __call__(
         self, field: DatasetFieldSchema, dataset: DatasetSchema
     ) -> TypeAndSignature:
