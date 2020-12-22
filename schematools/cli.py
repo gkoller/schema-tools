@@ -1,10 +1,13 @@
 import json
 
 import click
+from pprint import pprint
 import requests
 
+from alembic.migration import MigrationContext
+from alembic.autogenerate import compare_metadata
 import jsonschema
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, MetaData
 from sqlalchemy.exc import SQLAlchemyError
 from .permissions import (
     introspect_permissions,
@@ -20,7 +23,7 @@ from .db import (
     fetch_schema_from_relational_schema,
 )
 from .exceptions import ParserError
-from .events import EventsProcessor
+from .events import EventsProcessor, tables_factory
 from .introspect.db import introspect_db_schema
 from .introspect.geojson import introspect_geojson_files
 from .importer.geojson import GeoJSONImporter
@@ -126,6 +129,12 @@ def show():
 @schema.group()
 def permissions():
     """Show existing metadata"""
+    pass
+
+
+@schema.group()
+def migrate():
+    """Migrate database structure"""
     pass
 
 
@@ -504,3 +513,28 @@ def create_all_objects(schema_url, db_url):
 
     for table in data["tables"]:
         importer.generate_db_objects(table["id"])
+
+
+@migrate.command("table")
+@option_db_url
+@option_schema_url
+@argument_schema_location
+@click.argument("table_name")
+def migrate_table(db_url, schema_url, schema_location, table_name):
+    def myfilter(obj, name, type_, reflected, compare_to):
+        return name == table_name
+
+    metadata = MetaData()
+    engine = _get_engine(db_url)
+    dataset_schema = _get_dataset_schema(
+        schema_url,
+        schema_location,
+    )
+
+    # Fill metadata
+    tables_factory(dataset_schema, metadata)
+    with engine.begin() as connection:
+        mc = MigrationContext.configure(connection, opts=dict(include_object=myfilter))
+        diff = compare_metadata(mc, metadata)
+        pprint(diff)
+        # ms = produce_migrations(mc, metadata)
