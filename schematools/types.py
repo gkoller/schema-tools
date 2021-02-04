@@ -285,6 +285,9 @@ class DatasetTableSchema(SchemaType):
 
     @property
     def fields(self):
+        return self.get_fields()
+
+    def get_fields(self, add_sub_fields=True):
         required = set(self["schema"]["required"])
         for name, spec in self["schema"]["properties"].items():
             field_schema = DatasetFieldSchema(
@@ -294,6 +297,8 @@ class DatasetTableSchema(SchemaType):
             # These fields are added to identify the different
             # components of a compound FK to a another table
             if field_schema.relation is not None and field_schema.is_object:
+                if not add_sub_fields:
+                    continue
                 for subfield_schema in field_schema.sub_fields:
                     yield subfield_schema
             yield field_schema
