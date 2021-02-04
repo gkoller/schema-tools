@@ -1,1 +1,1 @@
-from .db import EventsProcessor
+from .rdb import EventsProcessor
