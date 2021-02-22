@@ -3,7 +3,7 @@ from datetime import date, datetime
 import pytest
 from dateutil.parser import parse as dtparse
 
-from schematools.events import EventsProcessor
+from schematools.events.rdb import EventsProcessor
 
 # pytestmark = pytest.mark.skip("all tests disabled")
 

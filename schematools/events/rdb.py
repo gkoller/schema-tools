@@ -16,6 +16,7 @@ from schematools import MAX_TABLE_LENGTH
 from schematools.importer import fetch_col_type, get_table_name
 from schematools.types import DatasetSchema
 from schematools.utils import to_snake_case
+from .fetchers import fetch_insert_data, fetch_update_data
 
 metadata = MetaData()
 
@@ -28,30 +29,11 @@ logger = logging.getLogger(__name__)
 
 class UnknownRelationException(Exception):
     """Custom Exception to signal the fact that an incoming
-    event is unsing an unknown type of relation for
+    event is using an unknown type of relation for
     which we do not have configuration info available.
     """
 
     pass
-
-
-def fetch_insert_data(event_data):
-    # remove dict values from the event. We only handle scalar datatypes.
-    # Json blobs in the events are containing irrelevant GOB-only data.
-    return {k: v for k, v in event_data["entity"].items() if not isinstance(v, dict)}
-
-
-def fetch_update_data(event_data):
-    # Update data has a different structure in the events. We convert it
-    # into a single dict (like for insert data), so we can handle
-    # the data in the exact same way.
-    update_data = {}
-    for modification in event_data["modifications"]:
-        # XXX skip geometrie for now, has geojson format (should be wkt)
-        if modification["key"] == "geometrie":
-            continue
-        update_data[modification["key"]] = modification["new_value"]
-    return update_data
 
 
 FK_TABLE = False
