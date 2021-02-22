@@ -1,6 +1,5 @@
 from datetime import date, datetime
 
-import pytest
 from dateutil.parser import parse as dtparse
 
 from schematools.events.json import EventsProcessor
@@ -14,7 +13,7 @@ def test_message_process_insert(here, gebieden_schema):
     processor = EventsProcessor([gebieden_schema])
     messages = list(read_messages_from_file(events_path))
     blobs = [
-        processor.fetch_blob(
+        processor.fetch_event_data(
             source_id,
             message_headers,
             message_body,
@@ -34,11 +33,11 @@ def test_message_process_update(here, gebieden_schema):
     processor = EventsProcessor([gebieden_schema])
     messages = list(read_messages_from_file(events_path))
     # fetch blob for the first message
-    first_blob = processor.fetch_blob(*messages[0])
-    # fetch update blob
-    updated_blob = processor.fetch_blob(
+    first_blob = processor.fetch_event_data(*messages[0])
+    # fetch updated blob
+    updated_blob = processor.fetch_event_data(
         *messages[1],
-        current_blob_value=first_blob.fields,
+        blob_fetcher=lambda k: first_blob.fields,
     )
 
     assert updated_blob.fields["code"] == "AA01"

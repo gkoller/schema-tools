@@ -39,9 +39,8 @@ Or is there some kind of binary format that is more efficient?
 
 from collections import defaultdict
 from dataclasses import dataclass, field
-import json
 from ..types import DatasetSchema
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Callable
 from .fetchers import fetch_insert_data, fetch_update_data
 
 # Maybe
@@ -103,28 +102,22 @@ class EventsProcessor:
                     if table_field.is_geo:
                         self.geo_fields[dataset_id][table.id].append(table_field.name)
 
-    def fetch_unique_key(
-        self,
-        message_headers: Dict[str, Any],
-        message_body: Dict[str, Any],
-    ):
-        event_type = message_headers["event_type"]
+    def _fetch_key(self, message_headers):
+        # For now, we need source_id, catalog and collection
+        # Get fields that are part of the identifier from schema
+        # identifier = self.datasets[dataset_id].get_table_by_id(table_id).identifier
+        identifier = ["source_id"]  # temporary situation
         dataset_id = message_headers["catalog"]
         table_id = message_headers["collection"]
-        data_fetcher = EVENT_TYPE_MAPPING[event_type]
-        event_data = data_fetcher(message_body)
-        # Identifier fields are coming from message_body
-        identifier_fields = self.datasets[dataset_id].get_table_by_id(table_id).identifier
-        id_value = ".".join(str(event_data[fn]) for fn in identifier_fields)
-
-        pass
+        id_value = ".".join(str(message_headers[fn]) for fn in identifier)
+        return f"{dataset_id}.{table_id}.{id_value}"
 
     def process_message(
         self,
         message_key: str,
         message_headers: Dict[str, Any],
         message_body: Dict[str, Any],
-        current_blob_value: Optional[Dict[str, Any]] = None,
+        blob_fetcher: Optional[Callable[[str], dict]] = None,
     ):
 
         event_type = message_headers["event_type"]
@@ -132,17 +125,13 @@ class EventsProcessor:
         table_id = message_headers["collection"]
         data_fetcher = EVENT_TYPE_MAPPING[event_type]
         event_data = data_fetcher(message_body)
+        key = self._fetch_key(message_headers)
+
         if event_type == "ADD":
             current_blob = self.blob_maker.fetch_empty_blob(dataset_id, table_id)
-            # Get field that make the identifier from schema
-            identifier = self.datasets[dataset_id].get_table_by_id(table_id).identifier
-            id_value = ".".join(str(event_data[fn]) for fn in identifier)
-            key = f"{dataset_id}.{table_id}.{id_value}"
         else:
-            assert (
-                current_blob_value is not None
-            ), "For MODIFY events, we need a current_blob_value"
-            current_blob = Blob(message_key, dataset_id, table_id, fields=current_blob_value)
+            assert blob_fetcher is not None, "For MODIFY events, we need a blob_fetcher function"
+            current_blob = Blob(key, dataset_id, table_id, fields=blob_fetcher(key))
 
         for field_name in self.geo_fields[dataset_id][table_id]:
             geo_value = event_data.get(field_name)
@@ -163,7 +152,13 @@ class EventsProcessor:
     ):
         pass
 
-    def fetch_blob(self, message_key, message_headers, message_body, current_blob_value=None):
+    def fetch_event_data(
+        self,
+        message_key,
+        message_headers,
+        message_body,
+        blob_fetcher: Optional[Callable[[str], Blob]] = None,
+    ):
         """ Return new or updated blob, depending on the type of event """
         is_relation = message_headers["catalog"] == "rel"
-        return self.process_message(message_key, message_headers, message_body, current_blob_value)
+        return self.process_message(message_key, message_headers, message_body, blob_fetcher)
