@@ -1,42 +1,3 @@
-__doc__ = """
-
-Eventprocessor that does crud operations on json blob objects.
-
-Spark has it own internal kv store. GOB data will be stored
-in this kv storeas json blobs, addressed by a unique key with the following
-components:  dataset - table - identificatie [ - volgnummer]
-
-Course of action is as follows:
-
-- GOB Events comes in (ADD/MODIFY/DELETE) from Kafka
-- For ADD:
-  - Create json blob for the record
-  - Store json blob in spark kv store
-  - Create Kafka event with this record
-- FOR MODIFY:
-  - Fetch json blob from spark kv store (based on unique key, see above)
-  - Update json blob with the incoming partial event data
-  - Store json blob in spark kv store
-  - Create Kafka event with the complete record (from the json blob)
-- For DELETE:
-  - Delete json blob in spark kv store (base on unique key)
-  - Create Kafka delete event for this record
-
-
-The current implementation updates the relational database with
-the incoming event data from GOB. This implementation should be converted
-so that it modifies the json blob.
-
-Open questions:
-
-How do we handle relations?
-Relations in kv store: left-ds - table - left-ident - right-ds - table - right-ident
-
-Is json the most appropriate serialization format for the spark kv store?
-Or is there some kind of binary format that is more efficient?
-
-"""
-
 from collections import defaultdict
 from dataclasses import dataclass, field
 from ..types import DatasetSchema
@@ -45,12 +6,17 @@ from .fetchers import fetch_insert_data, fetch_update_data
 
 # Maybe
 EMPTY_VALUES = {"string": "", "number": None, "integer": None}
-EVENT_TYPE_MAPPING = {"ADD": fetch_insert_data, "MODIFY": fetch_update_data}
+EVENT_TYPE_MAPPING = {
+    "ADD": fetch_insert_data,
+    "MODIFY": fetch_update_data,
+    "DELETE": fetch_insert_data,
+}
 
 
 @dataclass
 class Blob:
     key: str
+    event_type: str
     dataset_id: str
     table_id: str
     fields: dict = field(default_factory=dict)
@@ -78,12 +44,16 @@ class BlobMaker:
                 else:
                     continue
             fields_dict[ds_field.name] = initial_value
-        return Blob(None, dataset_id, table_id, fields_dict)
+        return Blob(None, None, dataset_id, table_id, fields_dict)
 
-    def fetch_updated_blob(self, blob: Blob, field_updates: dict) -> None:
+    def fetch_updated_blob(self, blob: Blob, event_type: str, field_updates: dict) -> None:
         # Immutable approach
         return Blob(
-            blob.key, blob.dataset_id, blob.table_id, fields={**(blob.fields), **field_updates}
+            blob.key,
+            event_type,
+            blob.dataset_id,
+            blob.table_id,
+            fields={**(blob.fields), **field_updates},
         )
 
 
@@ -123,15 +93,18 @@ class EventsProcessor:
         event_type = message_headers["event_type"]
         dataset_id = message_headers["catalog"]
         table_id = message_headers["collection"]
+        key = self._fetch_key(message_headers)
+        # Short circuit for DELETE event
+        if event_type == "DELETE":
+            return Blob(key, event_type, dataset_id, table_id, None)
         data_fetcher = EVENT_TYPE_MAPPING[event_type]
         event_data = data_fetcher(message_body)
-        key = self._fetch_key(message_headers)
 
         if event_type == "ADD":
             current_blob = self.blob_maker.fetch_empty_blob(dataset_id, table_id)
         else:
             assert blob_fetcher is not None, "For MODIFY events, we need a blob_fetcher function"
-            current_blob = Blob(key, dataset_id, table_id, fields=blob_fetcher(key))
+            current_blob = Blob(key, event_type, dataset_id, table_id, fields=blob_fetcher(key))
 
         for field_name in self.geo_fields[dataset_id][table_id]:
             geo_value = event_data.get(field_name)
@@ -141,7 +114,7 @@ class EventsProcessor:
                 # class is a bit too much.
                 srid = self.datasets[dataset_id]["crs"].split(":")[1]
                 event_data[field_name] = f"SRID={srid};{geo_value}"
-        return self.blob_maker.fetch_updated_blob(current_blob, event_data)
+        return self.blob_maker.fetch_updated_blob(current_blob, event_type, event_data)
 
     def process_relation(
         self,
@@ -151,6 +124,19 @@ class EventsProcessor:
         current_blob_value: Optional[Dict[str, Any]] = None,
     ):
         pass
+        # Moet Blob maken: key -> representeert volledige event
+        # event_data:
+        # identificatie -> src_id
+        # volgnummer -> src_volgnummer
+        # id -> src_id.src_volgnummer
+        # <naam-rel-veld>_identificatie -> dst_id
+        # <naam-rel-veld>_volgnummer -> dst_volgnummer
+        # <naam-rel-veld>_id -> dst_id.dst_volgnummer
+        # begin_geldigheid
+        # eind_geldigheid
+
+        # dst_dataset_id
+        # dst_table_id
 
     def fetch_event_data(
         self,
@@ -160,5 +146,7 @@ class EventsProcessor:
         blob_fetcher: Optional[Callable[[str], Blob]] = None,
     ):
         """ Return new or updated blob, depending on the type of event """
-        is_relation = message_headers["catalog"] == "rel"
+        if message_headers["catalog"] == "rel":
+            return self.process_relation(message_key, message_headers, message_body, blob_fetcher)
+
         return self.process_message(message_key, message_headers, message_body, blob_fetcher)
