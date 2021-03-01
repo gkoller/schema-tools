@@ -12,14 +12,16 @@ def test_message_process_insert(here, gebieden_schema):
     events_path = here / "files" / "data" / "bouwblokken.gobevents"
     processor = EventsProcessor([gebieden_schema])
     messages = list(read_messages_from_file(events_path))
-    blobs = [
-        processor.fetch_event_data(
-            source_id,
-            message_headers,
-            message_body,
+    blobs = []
+    for source_id, message_headers, message_body in messages:
+        key = processor.fetch_key(message_headers)
+        blobs.append(
+            processor.fetch_event_data(
+                key,
+                message_headers,
+                message_body,
+            )
         )
-        for source_id, message_headers, message_body in messages
-    ]
 
     assert len(blobs) == 2
     assert blobs[0].fields["code"] == "AA01"
@@ -33,11 +35,12 @@ def test_message_process_update(here, gebieden_schema):
     processor = EventsProcessor([gebieden_schema])
     messages = list(read_messages_from_file(events_path))
     # fetch blob for the first message
-    first_blob = processor.fetch_event_data(*messages[0])
+
+    key = processor.fetch_key(messages[0][1])
+    first_blob = processor.fetch_event_data(key, *messages[0][1:])
     # fetch updated blob
     updated_blob = processor.fetch_event_data(
-        *messages[1],
-        blob_fetcher=lambda k: first_blob.fields,
+        key, *messages[1][1:], current_event=first_blob.fields
     )
 
     assert updated_blob.fields["code"] == "AA01"
@@ -49,14 +52,16 @@ def test_message_process_delete(here, gebieden_schema):
     events_path = here / "files" / "data" / "bouwblokken_delete.gobevents"
     processor = EventsProcessor([gebieden_schema])
     messages = read_messages_from_file(events_path)
-    blobs = [
-        processor.fetch_event_data(
-            source_id,
-            message_headers,
-            message_body,
+    blobs = []
+    for source_id, message_headers, message_body in messages:
+        key = processor.fetch_key(message_headers)
+        blobs.append(
+            processor.fetch_event_data(
+                key,
+                message_headers,
+                message_body,
+            )
         )
-        for source_id, message_headers, message_body in messages
-    ]
 
     assert len(blobs) == 3
     assert blobs[2].event_type == "DELETE"

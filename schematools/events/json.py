@@ -1,7 +1,7 @@
 from collections import defaultdict
 from dataclasses import dataclass, field
 from ..types import DatasetSchema
-from typing import List, Dict, Any, Optional, Callable
+from typing import List, Dict, Any, Optional
 from .fetchers import fetch_insert_data, fetch_update_data
 
 # Maybe
@@ -72,7 +72,7 @@ class EventsProcessor:
                     if table_field.is_geo:
                         self.geo_fields[dataset_id][table.id].append(table_field.name)
 
-    def _fetch_key(self, message_headers):
+    def fetch_key(self, message_headers):
         # For now, we need source_id, catalog and collection
         # Get fields that are part of the identifier from schema
         # identifier = self.datasets[dataset_id].get_table_by_id(table_id).identifier
@@ -84,16 +84,15 @@ class EventsProcessor:
 
     def process_message(
         self,
-        message_key: str,
+        key: str,
         message_headers: Dict[str, Any],
         message_body: Dict[str, Any],
-        blob_fetcher: Optional[Callable[[str], dict]] = None,
+        current_event: Optional[dict] = None,
     ):
 
         event_type = message_headers["event_type"]
         dataset_id = message_headers["catalog"]
         table_id = message_headers["collection"]
-        key = self._fetch_key(message_headers)
         # Short circuit for DELETE event
         if event_type == "DELETE":
             return Blob(key, event_type, dataset_id, table_id, None)
@@ -103,8 +102,8 @@ class EventsProcessor:
         if event_type == "ADD":
             current_blob = self.blob_maker.fetch_empty_blob(dataset_id, table_id)
         else:
-            assert blob_fetcher is not None, "For MODIFY events, we need a blob_fetcher function"
-            current_blob = Blob(key, event_type, dataset_id, table_id, fields=blob_fetcher(key))
+            assert current_event is not None, "For MODIFY events, we need a current_event"
+            current_blob = Blob(key, event_type, dataset_id, table_id, fields=current_event)
 
         for field_name in self.geo_fields[dataset_id][table_id]:
             geo_value = event_data.get(field_name)
@@ -118,10 +117,10 @@ class EventsProcessor:
 
     def process_relation(
         self,
-        message_key: str,
+        key: str,
         message_headers: Dict[str, Any],
         message_body: Dict[str, Any],
-        current_blob_value: Optional[Dict[str, Any]] = None,
+        current_event: Optional[dict] = None,
     ):
         pass
         # Moet Blob maken: key -> representeert volledige event
@@ -140,13 +139,13 @@ class EventsProcessor:
 
     def fetch_event_data(
         self,
-        message_key,
+        key,
         message_headers,
         message_body,
-        blob_fetcher: Optional[Callable[[str], Blob]] = None,
+        current_event: Optional[dict] = None,
     ):
         """ Return new or updated blob, depending on the type of event """
         if message_headers["catalog"] == "rel":
-            return self.process_relation(message_key, message_headers, message_body, blob_fetcher)
+            return self.process_relation(key, message_headers, message_body, current_event)
 
-        return self.process_message(message_key, message_headers, message_body, blob_fetcher)
+        return self.process_message(key, message_headers, message_body, current_event)
