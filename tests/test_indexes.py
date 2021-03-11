@@ -166,7 +166,7 @@ def test_index_troughtables_creation(engine, db_schema):
 
         dataset_table = dataset_schema.get_table_by_id(table["id"])
 
-        for table in dataset_table.get_through_tables_by_id():
+        for table in dataset_table.get_through_tables():
 
             conn = create_engine(engine.url, client_encoding="UTF-8")
             meta_data = MetaData(bind=conn, reflect=True)

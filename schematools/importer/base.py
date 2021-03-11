@@ -567,7 +567,7 @@ def index_factory(
         in the Amsterdam schema
         """
 
-        for table in dataset_table.get_through_tables_by_id():
+        for table in dataset_table.get_through_tables():
 
             through_tables = {}
             indexes_to_create = []

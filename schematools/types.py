@@ -298,7 +298,7 @@ class DatasetTableSchema(SchemaType):
             )
             # Add extra fields for relations of type object
             # These fields are added to identify the different
-            # components of a compound FK to a another table
+            # components of a compound FK to another table
             if field_schema.relation is not None and field_schema.is_object:
                 for subfield_schema in field_schema.sub_fields:
                     yield subfield_schema
@@ -319,7 +319,7 @@ class DatasetTableSchema(SchemaType):
             if field_schema.id == field_id:
                 return field_schema
 
-    def get_through_tables_by_id(self) -> List[DatasetTableSchema]:
+    def get_through_tables(self) -> List[DatasetTableSchema]:
         """Access list of through_tables (for n-m relations) for a single base table """
         tables = []
         for field in self.fields:
