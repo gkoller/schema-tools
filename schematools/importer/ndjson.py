@@ -84,7 +84,7 @@ class NDJSONImporter(BaseImporter):
                         # empty fk_value_parts leads to None value
                         relation_field_value = ".".join((str(p) for p in fk_value_parts) or None)
                     row[f"{relation_field_name}_id"] = relation_field_value
-                    del row[rel_field.id]
+                    # del row[rel_field.id]
 
                 for n_field in nested_field_info:
                     field_name = to_snake_case(n_field.name)

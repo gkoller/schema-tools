@@ -197,8 +197,9 @@ class DatasetSchema(SchemaType):
         # and not the shortnames
         left_dataset = to_snake_case(self.id)
         left_table = to_snake_case(table.id)
+        relation_field = field.nm_relation or field.relation
         right_dataset, right_table = [
-            to_snake_case(part) for part in field.nm_relation.split(":")[:2]
+            to_snake_case(part) for part in relation_field.split(":")[:2]
         ]
         snakecased_fieldname = to_snake_case(field.name)
         table_id = get_through_table_name(len(self.id) + 1, table.name, snakecased_fieldname)
@@ -294,7 +295,11 @@ class DatasetTableSchema(SchemaType):
         required = set(self["schema"]["required"])
         for id_, spec in self["schema"]["properties"].items():
             field_schema = DatasetFieldSchema(
-                _id=id_, _parent_table=self, _required=(id_ in required), **spec
+                _id=id_,
+                _parent_table=self,
+                _required=(id_ in required),
+                _temporal=self.is_temporal,
+                **spec,
             )
             # Add extra fields for relations of type object
             # These fields are added to identify the different
@@ -307,7 +312,13 @@ class DatasetTableSchema(SchemaType):
         # If compound key, add PK field
         # XXX we should check for an existing "id" field, avoid collisions
         if self.has_compound_key:
-            yield DatasetFieldSchema(_id="id", _parent_table=self, _required=True, type="string")
+            yield DatasetFieldSchema(
+                _id="id",
+                _parent_table=self,
+                _required=True,
+                _temporal=self.is_temporal,
+                type="string",
+            )
 
     def get_fields_by_id(self, field_ids: List[str]) -> Iterator[DatasetFieldSchema]:
         for field in self.fields:
@@ -325,6 +336,7 @@ class DatasetTableSchema(SchemaType):
         for field in self.fields:
             if field.is_through_table:
                 tables.append(self._parent_schema.build_through_table(table=self, field=field))
+
         return tables
 
     @property
@@ -432,7 +444,8 @@ class DatasetTableSchema(SchemaType):
         """Generates fields names that contain a 1:N relation to a parent table"""
         fields_items = self["schema"]["properties"].items()
         field_schema = (
-            DatasetFieldSchema(_id=_id, _parent_table=self, **spec) for _id, spec in fields_items
+            DatasetFieldSchema(_id=_id, _parent_table=self, _temporal=self.is_temporal, **spec)
+            for _id, spec in fields_items
         )
         for field in field_schema:
             if field.relation:
@@ -648,8 +661,11 @@ class DatasetFieldSchema(DatasetType):
     def is_through_table(self) -> bool:
         """
         Checks if field is a possible through table.
+        XXX explain temporal through
         """
-        return self.is_array and self.nm_relation is not None
+        return (
+            self.is_array and self.nm_relation is not None or self.is_object and self.is_temporal
+        )
 
     @property
     def auth(self) -> Optional[str]:
