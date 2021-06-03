@@ -11,5 +11,4 @@ services:
       TOPIC: events
       GROUP_ID: python_jan_example_group_1
       AUTO_OFFSET_RESET: earliest
-
-      # command: uwsgi --py-auto-reload=1
+    command: schema kafka consume gebieden -a brk -a bag -t events

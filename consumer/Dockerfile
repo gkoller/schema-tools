@@ -4,14 +4,11 @@ FROM amsterdam/python:3.8-buster
 
 WORKDIR /app
 
-# For local testing of a not yet published schematools library
-# copy the wheel into the container and install it
-
-# COPY amsterdam_schema_tools-*.whl .
-# RUN pip install "$(ls amsterdam_schema_tools-*.whl)[kafka]"
-
 RUN pip install amsterdam-schema-tools[kafka]
 
-CMD ["sleep", "infinity"]
+COPY docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh
+
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
 
 USER datapunt
