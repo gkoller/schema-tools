@@ -3,8 +3,16 @@ import json
 import pytest
 
 from schematools.contrib.django.auth_backend import RequestProfile
+from schematools.contrib.django.factories import remove_dynamic_models
 from schematools.contrib.django.models import Dataset, Profile
 from schematools.types import DatasetSchema
+
+
+@pytest.fixture(autouse=True)
+def clear_models_caches():
+    """Make sure models are always cleared after running tests"""
+    yield
+    remove_dynamic_models()
 
 
 @pytest.fixture
