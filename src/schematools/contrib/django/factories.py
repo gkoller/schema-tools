@@ -25,6 +25,7 @@ from .models import (
 
 TypeAndSignature = Tuple[Type[models.Field], tuple, Dict[str, Any]]
 MODEL_CREATION_COUNTER = 1
+MODELS_IN_CREATION = set()
 
 
 class RelationMaker:
@@ -363,6 +364,7 @@ def remove_dynamic_models() -> None:
     # Allow code to detect whether a model is still alive despite having cleared all caches.
     global MODEL_CREATION_COUNTER
     MODEL_CREATION_COUNTER += 1
+    MODELS_IN_CREATION.clear()
 
 
 def is_dangling_model(model: Type[DynamicModel]) -> bool:
@@ -394,6 +396,15 @@ def model_factory(
     display_field = (
         to_snake_case(table_schema.display_field) if table_schema.display_field else None
     )
+
+    # In case relations cause a loop, protect against endless loops.
+    model_id = f"{app_label}.{table_schema.model_name()}"
+    if model_id in MODELS_IN_CREATION:
+        print(
+            f"Recursion in model_factory() for {model_id}. "
+            f"Created models: {sorted(MODELS_IN_CREATION)}"
+        )
+    MODELS_IN_CREATION.add(model_id)
 
     is_temporal = table_schema.is_temporal
 
