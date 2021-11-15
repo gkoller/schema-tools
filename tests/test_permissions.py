@@ -9,7 +9,7 @@ from schematools.permissions.db import apply_schema_and_profile_permissions
 
 
 class TestReadPermissions:
-    def test_auto_permissions(self, here, engine, gebieden_schema_auth, dbsession):
+    def test_auto_permissions(self, here, engine, gebieden_schema_auth):
         """
         Prove that roles are automatically created for each scope in the schema
         LEVEL/A --> scope_level_a
@@ -41,7 +41,7 @@ class TestReadPermissions:
             engine, "scope_level_c", "gebieden_bouwblokken", "begin_geldigheid"
         )
 
-    def test_openbaar_permissions(self, here, engine, afval_schema, dbsession):
+    def test_openbaar_permissions(self, here, engine, afval_schema):
         """
         Prove that the default auth scope is "OPENBAAR".
         """
@@ -77,7 +77,7 @@ class TestReadPermissions:
         _check_select_permission_denied(engine, "bag_r", "afvalwegingen_containers")
         _check_select_permission_granted(engine, "bag_r", "afvalwegingen_clusters")
 
-    def test_interacting_permissions(self, here, engine, gebieden_schema_auth, dbsession):
+    def test_interacting_permissions(self, here, engine, gebieden_schema_auth):
         """
         Prove that dataset, table, and field permissions are set
         according to the "OF-OF" Exclusief principle:
@@ -144,7 +144,7 @@ class TestReadPermissions:
         )
         _check_select_permission_denied(engine, "level_c", "gebieden_buurten")
 
-    def test_auth_list_permissions(self, here, engine, gebieden_schema_auth_list, dbsession):
+    def test_auth_list_permissions(self, here, engine, gebieden_schema_auth_list):
         """
         Prove that dataset, table, and field permissions are set,
         according to the "OF-OF" Exclusief principle.
@@ -253,7 +253,7 @@ class TestReadPermissions:
         _check_delete_permission_denied(engine, "level_b1", "gebieden_bouwblokken", "id = 'abc'")
         _check_truncate_permission_denied(engine, "level_b1", "gebieden_bouwblokken")
 
-    def test_auto_create_roles(self, here, engine, gebieden_schema_auth, dbsession):
+    def test_auto_create_roles(self, here, engine, gebieden_schema_auth):
         """
         Prove that dataset, table, and field permissions are set according,
         to the "OF-OF" Exclusief principle:
@@ -312,7 +312,7 @@ class TestReadPermissions:
         _check_select_permission_denied(engine, "scope_level_c", "gebieden_buurten")
 
     def test_single_dataset_permissions(
-        self, here, engine, gebieden_schema_auth, meetbouten_schema, dbsession
+        self, here, engine, gebieden_schema_auth, meetbouten_schema
     ):
         """
         Prove when revoking grants on one dataset, other datasets are unaffected.

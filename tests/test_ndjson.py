@@ -5,7 +5,7 @@ import pytest
 from schematools.importer.ndjson import NDJSONImporter
 
 
-def test_ndjson_import_nm(here, engine, meetbouten_schema, gebieden_schema, dbsession):
+def test_ndjson_import_nm(here, engine, meetbouten_schema, gebieden_schema):
     ndjson_path = here / "files" / "data" / "metingen.ndjson"
     importer = NDJSONImporter(meetbouten_schema, engine)
     importer.generate_db_objects("metingen", truncate=True, ind_extra_index=False)
@@ -26,7 +26,7 @@ def test_ndjson_import_nm(here, engine, meetbouten_schema, gebieden_schema, dbse
 
 
 def test_ndjson_import_separate_relations_target_compound(
-    here, engine, meetbouten_schema, gebieden_schema, dbsession
+    here, engine, meetbouten_schema, gebieden_schema
 ):
     ndjson_path = here / "files" / "data" / "meetbouten_ligt_in_buurt.ndjson"
     importer = NDJSONImporter(meetbouten_schema, engine)
@@ -38,9 +38,7 @@ def test_ndjson_import_separate_relations_target_compound(
     ]
 
 
-def test_ndjson_import_separate_relations_both_compound(
-    here, engine, ggwgebieden_schema, dbsession
-):
+def test_ndjson_import_separate_relations_both_compound(here, engine, ggwgebieden_schema):
     ndjson_path = here / "files" / "data" / "ggwgebieden_bestaatuitbuurten.ndjson"
     importer = NDJSONImporter(ggwgebieden_schema, engine)
     importer.generate_db_objects(
@@ -53,7 +51,7 @@ def test_ndjson_import_separate_relations_both_compound(
     ]
 
 
-def test_ndjson_import_no_embedded_relation_in_data(here, engine, meetbouten_schema, dbsession):
+def test_ndjson_import_no_embedded_relation_in_data(here, engine, meetbouten_schema):
     ndjson_path = here / "files" / "data" / "meetbouten-no-embedded-rel-data.ndjson"
     importer = NDJSONImporter(meetbouten_schema, engine)
     importer.generate_db_objects("meetbouten", truncate=True, ind_extra_index=False)
@@ -70,9 +68,7 @@ def test_ndjson_import_no_embedded_relation_in_data(here, engine, meetbouten_sch
     assert records[0]["ligt_in_buurt_identificatie"] is None
 
 
-def test_ndjson_import_no_embedded_nm_relation_in_data(
-    here, engine, ggwgebieden_schema, dbsession
-):
+def test_ndjson_import_no_embedded_nm_relation_in_data(here, engine, ggwgebieden_schema):
     ndjson_path = here / "files" / "data" / "ggwgebieden-no-embedded-rel-data.ndjson"
     importer = NDJSONImporter(ggwgebieden_schema, engine)
     importer.generate_db_objects("ggwgebieden", truncate=True, ind_extra_index=False)
@@ -89,7 +85,7 @@ def test_ndjson_import_no_embedded_nm_relation_in_data(
     assert len(records) == 0
 
 
-def test_ndjson_import_jsonpath_provenance(here, engine, meetbouten_schema, dbsession):
+def test_ndjson_import_jsonpath_provenance(here, engine, meetbouten_schema):
     ndjson_path = here / "files" / "data" / "meetbouten.ndjson"
     importer = NDJSONImporter(meetbouten_schema, engine)
     importer.generate_db_objects("meetbouten", truncate=True, ind_extra_index=False)
@@ -100,7 +96,7 @@ def test_ndjson_import_jsonpath_provenance(here, engine, meetbouten_schema, dbse
     assert records[0]["merk_omschrijving"] == "De meetbout"
 
 
-def test_ndjson_import_nm_compound_keys(here, engine, ggwgebieden_schema, dbsession):
+def test_ndjson_import_nm_compound_keys(here, engine, ggwgebieden_schema):
     ndjson_path = here / "files" / "data" / "ggwgebieden.ndjson"
     importer = NDJSONImporter(ggwgebieden_schema, engine)
     importer.generate_db_objects("ggwgebieden", truncate=True, ind_extra_index=False)
@@ -128,7 +124,7 @@ def test_ndjson_import_nm_compound_keys(here, engine, ggwgebieden_schema, dbsess
     assert records[0].keys() == columns
 
 
-def test_ndjson_import_nm_compound_keys_with_geldigheid(here, engine, gebieden_schema, dbsession):
+def test_ndjson_import_nm_compound_keys_with_geldigheid(here, engine, gebieden_schema):
     ndjson_path = here / "files" / "data" / "ggwgebieden-with-geldigheid.ndjson"
     importer = NDJSONImporter(gebieden_schema, engine)
     importer.generate_db_objects("ggwgebieden", truncate=True, ind_extra_index=False)
@@ -171,9 +167,7 @@ def test_ndjson_import_nm_compound_keys_with_geldigheid(here, engine, gebieden_s
     assert set(records[0].keys()) == columns
 
 
-def test_ndjson_import_nm_compound_selfreferencing_keys(
-    here, engine, kadastraleobjecten_schema, dbsession
-):
+def test_ndjson_import_nm_compound_selfreferencing_keys(here, engine, kadastraleobjecten_schema):
     ndjson_path = here / "files" / "data" / "kadastraleobjecten.ndjson"
     importer = NDJSONImporter(kadastraleobjecten_schema, engine)
     importer.generate_db_objects("kadastraleobjecten", truncate=True, ind_extra_index=False)
@@ -204,7 +198,7 @@ def test_ndjson_import_nm_compound_selfreferencing_keys(
     )
 
 
-def test_ndjson_import_nested_tables(here, engine, verblijfsobjecten_schema, dbsession):
+def test_ndjson_import_nested_tables(here, engine, verblijfsobjecten_schema):
     ndjson_path = here / "files" / "data" / "verblijfsobjecten.ndjson"
     importer = NDJSONImporter(verblijfsobjecten_schema, engine)
     importer.generate_db_objects("verblijfsobjecten", truncate=True, ind_extra_index=False)
@@ -225,7 +219,7 @@ def test_ndjson_import_nested_tables(here, engine, verblijfsobjecten_schema, dbs
     )
 
 
-def test_ndjson_import_1n(here, engine, meetbouten_schema, dbsession):
+def test_ndjson_import_1n(here, engine, meetbouten_schema):
     ndjson_path = here / "files" / "data" / "meetbouten.ndjson"
     importer = NDJSONImporter(meetbouten_schema, engine)
     importer.generate_db_objects("meetbouten", truncate=True, ind_extra_index=False)
@@ -240,7 +234,7 @@ def test_ndjson_import_1n(here, engine, meetbouten_schema, dbsession):
     assert "ligt_in_buurt_identificatie" in records[0]
 
 
-def test_inactive_relation_that_are_commented_out(here, engine, stadsdelen_schema, dbsession):
+def test_inactive_relation_that_are_commented_out(here, engine, stadsdelen_schema):
     """Prove that relations that are commented out in the schema are flattened to strings"""
     ndjson_path = here / "files" / "data" / "stadsdelen.ndjson"
     importer = NDJSONImporter(stadsdelen_schema, engine)
@@ -251,7 +245,7 @@ def test_inactive_relation_that_are_commented_out(here, engine, stadsdelen_schem
     assert records[0]["ligt_in_gemeente"] == '{"identificatie": "0363"}'
 
 
-def test_missing_fields_in_jsonpath_provenance(here, engine, woonplaatsen_schema, dbsession):
+def test_missing_fields_in_jsonpath_provenance(here, engine, woonplaatsen_schema):
     """Prove that missing fields in jsonpath provenance fields do not crash"""
     ndjson_path = here / "files" / "data" / "woonplaatsen.ndjson"
     importer = NDJSONImporter(woonplaatsen_schema, engine)
@@ -263,7 +257,7 @@ def test_missing_fields_in_jsonpath_provenance(here, engine, woonplaatsen_schema
 
 
 def test_ndjson_import_with_shortnames_in_schema(
-    here, engine, hr_schema, verblijfsobjecten_schema, dbsession
+    here, engine, hr_schema, verblijfsobjecten_schema
 ):
     """Prove that data for schemas with shortnames for tables/fields is imported correctly."""
     ndjson_path = here / "files" / "data" / "hr.ndjson"
@@ -308,9 +302,7 @@ def test_ndjson_import_with_shortnames_in_schema(
     }
 
 
-def test_provenance_for_schema_field_ids_equal_to_ndjson_keys(
-    here, engine, woonplaatsen_schema, dbsession
-):
+def test_provenance_for_schema_field_ids_equal_to_ndjson_keys(here, engine, woonplaatsen_schema):
     """Prove that imports where the schema field is equal to the key in the imported ndjson
     data are processed correctly."""
     ndjson_path = here / "files" / "data" / "woonplaatsen.ndjson"
@@ -323,9 +315,7 @@ def test_provenance_for_schema_field_ids_equal_to_ndjson_keys(
     assert records[1]["heeft_dossier_id"] is None
 
 
-def test_ndjson_test_long_postfixed_names(
-    here, engine, brk_schema, verblijfsobjecten_schema, dbsession
-):
+def test_ndjson_test_long_postfixed_names(here, engine, brk_schema, verblijfsobjecten_schema):
     """Prove that very long names with a postfix are trucacted correctly.
 
     In this case, the table names is just below the threshhold,

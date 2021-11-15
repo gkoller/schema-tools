@@ -5,7 +5,7 @@ from schematools.importer.base import BaseImporter
 from schematools.types import DatasetSchema, SchemaType
 
 
-def test_index_creation(engine, db_schema):
+def test_index_creation(engine):
     """Prove that identifier index is created based on schema specificiation."""
     test_data = {
         "type": "dataset",
@@ -70,7 +70,7 @@ def test_index_creation(engine, db_schema):
         assert ind_index_exists
 
 
-def test_index_troughtables_creation(engine, db_schema):
+def test_index_troughtables_creation(engine):
     """Prove that many-to-many table indexes are created based on schema specification.
 
     A NM relation with a very long name has deliberatly added. The truncation of index
@@ -202,7 +202,7 @@ def test_index_troughtables_creation(engine, db_schema):
     assert number_of_indexes > 0
 
 
-def test_fk_index_creation(engine, db_schema):
+def test_fk_index_creation(engine):
     """Prove that index is created on 1:N relational columns based on schema specificiation."""
     test_data = {
         "type": "dataset",
@@ -287,7 +287,7 @@ def test_fk_index_creation(engine, db_schema):
             assert ind_index_exists
 
 
-def test_size_of_index_name(engine, db_schema):
+def test_size_of_index_name(engine):
     """Prove that the size of the index name does not get too long.
 
     It should not exeed the size for Postgres database object names

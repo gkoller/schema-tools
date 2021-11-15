@@ -2,122 +2,102 @@ from __future__ import annotations
 
 import json
 import os
-from contextlib import contextmanager
+from contextlib import closing, contextmanager
 from pathlib import Path
 from typing import Any, ContextManager, Dict
-from unittest.mock import MagicMock
-from urllib.parse import ParseResult, urlparse
 
 import pytest
-import requests
 import sqlalchemy_utils
-from geoalchemy2 import Geometry
 from more_ds.network.url import URL
-from sqlalchemy import MetaData
-from sqlalchemy.orm import Session
+from sqlalchemy import MetaData, create_engine
+from sqlalchemy.engine.url import make_url
+from sqlalchemy.orm import scoped_session, sessionmaker
 
-from schematools.importer.base import metadata
 from schematools.types import DatasetSchema, Json, ProfileSchema
 
 HERE = Path(__file__).parent
 
 
-# fixtures engine and dbengine provided by pytest-sqlalchemy,
-# automatically discovered by pytest via setuptools entry-points.
-# https://github.com/toirl/pytest-sqlalchemy/blob/master/pytest_sqlalchemy.py
+@pytest.fixture(scope="session")
+def db_url(worker_id):
+    database_url = os.environ.get("DATABASE_URL", "postgresql://localhost/schematools")
+    url = make_url(database_url)
+    if worker_id == "master":
+        # pytest is being run without any workers
+        url.database = f"test_{url.database}"
+    else:
+        url.database = f"test_{url.database}_{worker_id}"
+    return str(url)
+
+
+@pytest.fixture(scope="session")
+def engine(db_url):
+    _engine = create_engine(db_url)
+
+    if not sqlalchemy_utils.functions.database_exists(_engine.url):
+        sqlalchemy_utils.functions.create_database(_engine.url)
+
+    with closing(_engine.connect()) as conn:
+        conn.execute("COMMIT;")
+        conn.execute("CREATE EXTENSION IF NOT EXISTS postgis")
+    try:
+        yield _engine
+    finally:
+        sqlalchemy_utils.functions.drop_database(_engine.url)
+
+
+@pytest.fixture
+def connection(engine):
+    with closing(engine.connect()) as conn:
+        transaction = conn.begin()
+        try:
+            yield conn
+        finally:
+            print("Rollback")
+            transaction.rollback()
+            print("Rollback done")
+
+
+@pytest.fixture
+def metadata(engine):
+    _metadata = MetaData(bind=engine)
+    try:
+        yield _metadata
+    finally:
+        print("Drop")
+        _metadata.drop_all()
+        print("Drop done")
+
+
+@pytest.fixture(scope="session")
+def session_factory(engine):
+    return scoped_session(sessionmaker(bind=engine))
+
+
+@pytest.fixture
+def session(session_factory):
+    _session = session_factory()
+
+    try:
+        yield _session
+    finally:
+        _session.rollback()
+        _session.close()
+
+
+@pytest.fixture
+def meta(engine):
+    _meta = MetaData()
+    try:
+        yield _meta
+    finally:
+        _meta.drop_all(bind=engine)
+        _meta.clear()
 
 
 @pytest.fixture()
 def here() -> Path:
     return HERE
-
-
-@pytest.fixture(scope="session")
-def db_url():
-    """Get the DATABASE_URL, prepend test_ to it."""
-    url = os.environ.get("DATABASE_URL", "postgresql://localhost/schematools")
-
-    parts = urlparse(url)
-    dbname = parts.path[1:]
-
-    # ParseResult is a namedtuple so need to cast to an editable type
-    parts: dict = dict(parts._asdict())
-    parts["path"] = f"test_{dbname}"
-    return ParseResult(**parts).geturl()
-
-
-@pytest.fixture(scope="session")
-def sqlalchemy_connect_url(request, db_url):
-    """Override pytest-sqlalchemy fixture to use default db_url instead."""
-    return request.config.getoption("--sqlalchemy-connect-url") or db_url
-
-
-@pytest.fixture(scope="session")
-def db_schema(engine, sqlalchemy_keep_db):
-    db_exists = sqlalchemy_utils.functions.database_exists(engine.url)
-    if db_exists and not sqlalchemy_keep_db:
-        raise RuntimeError("DB exists, remove it before proceeding")
-
-    if not db_exists:
-        sqlalchemy_utils.functions.create_database(engine.url)
-        engine.execute("CREATE EXTENSION postgis")
-    yield
-    sqlalchemy_utils.functions.drop_database(engine.url)
-
-
-@pytest.fixture()
-def schema_url():
-    return URL(os.environ.get("SCHEMA_URL", "https://schemas.data.amsterdam.nl/datasets/"))
-
-
-@pytest.fixture(scope="function")
-def dbsession(engine, dbsession, sqlalchemy_keep_db) -> Session:
-    """Override the 'dbsession' to create filled database tables."""
-    try:
-        yield dbsession
-    finally:
-        # Drop all test tables after the tests completed
-        if not sqlalchemy_keep_db:
-            metadata.drop_all(bind=engine)
-        metadata.clear()
-        dbsession.close()
-
-
-@pytest.fixture()
-def tconn(engine, local_metadata):
-    """Will start a transaction on the connection. The connection will
-    be rolled back after it leaves its scope.
-    """
-
-    with engine.connect() as conn:
-        transaction = conn.begin()
-        try:
-            yield conn
-        finally:
-            transaction.rollback()
-
-
-@pytest.fixture(scope="module")
-def module_metadata(engine):
-    """A module scoped metadata. This can be used to collect table structures
-    during tests that are part of a particular module. At the module boundary, these tables
-    are dropped. When Table models are constructed serveral times in these tests,
-    the 'extend_existing' constructor arg. can be used, to avoid errors.
-    Tables are just replaced in the same metadata object.
-    """
-    _meta = MetaData()
-    yield _meta
-    _meta.drop_all(bind=engine)
-
-
-@pytest.fixture
-def local_metadata(engine):
-    """A function scoped metadata. Some tests really need to destroy and not update
-    previous instances of SA Table objects.
-    """
-    _meta = MetaData()
-    yield _meta
-    _meta.drop_all(bind=engine)
 
 
 @pytest.fixture(scope="session")

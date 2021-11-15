@@ -4,7 +4,7 @@ from schematools.importer.base import BaseImporter
 from schematools.importer.ndjson import NDJSONImporter
 
 
-def test_camelcased_names_during_import(here, engine, bouwblokken_schema, dbsession):
+def test_camelcased_names_during_import(here, engine, bouwblokken_schema):
     ndjson_path = here / "files" / "data" / "gebieden.ndjson"
     importer = NDJSONImporter(bouwblokken_schema, engine)
     importer.generate_db_objects("bouwblokken", truncate=True, ind_extra_index=False)
@@ -21,7 +21,7 @@ def test_camelcased_names_during_import(here, engine, bouwblokken_schema, dbsess
     assert records[0]["eind_geldigheid"] == date(2008, 11, 14)
 
 
-def test_skip_duplicate_keys_in_batch_during_import(here, engine, bouwblokken_schema, dbsession):
+def test_skip_duplicate_keys_in_batch_during_import(here, engine, bouwblokken_schema):
     """Prove that the ndjson, which has a duplicate record, does not lead to an exception"""
     ndjson_path = here / "files" / "data" / "gebieden-duplicate-id.ndjson"
     importer = NDJSONImporter(bouwblokken_schema, engine)
@@ -30,7 +30,7 @@ def test_skip_duplicate_keys_in_batch_during_import(here, engine, bouwblokken_sc
 
 
 def test_skip_duplicate_keys_in_db_during_import_with_existing_value(
-    here, engine, bouwblokken_schema, dbsession
+    here, engine, bouwblokken_schema
 ):
     """Prove that the ndjson, which has a duplicate record, does not lead to an exception"""
     ndjson_path = here / "files" / "data" / "gebieden.ndjson"
@@ -40,7 +40,7 @@ def test_skip_duplicate_keys_in_db_during_import_with_existing_value(
 
 
 def test_skip_duplicate_keys_in_db_during_import_with_duplicate_in_next_batch(
-    here, engine, bouwblokken_schema, dbsession
+    here, engine, bouwblokken_schema
 ):
     """Prove that the ndjson, which has a duplicate record, does not lead to an exception"""
     ndjson_path = here / "files" / "data" / "gebieden.ndjson"
@@ -50,9 +50,7 @@ def test_skip_duplicate_keys_in_db_during_import_with_duplicate_in_next_batch(
     importer.load_file(ndjson_path)
 
 
-def test_numeric_datatype_scale(
-    here, engine, woningbouwplannen_schema, gebieden_schema, dbsession
-):
+def test_numeric_datatype_scale(here, engine, woningbouwplannen_schema, gebieden_schema):
     """Prove that when multipleOf is used in schema,
     it's value is used to set the scale of the numeric datatype"""
     importer = BaseImporter(woningbouwplannen_schema, engine)
@@ -74,9 +72,7 @@ def test_numeric_datatype_scale(
     assert record[0]["numeric_scale"] == 4
 
 
-def test_invalid_numeric_datatype_scale(
-    here, engine, woningbouwplannen_schema, gebieden_schema, dbsession
-):
+def test_invalid_numeric_datatype_scale(here, engine, woningbouwplannen_schema, gebieden_schema):
     """Prove that when invaldi multipleOf i.e. 0.000 is used in schema,
     the datatype is in that case just plain numeric without scale"""
     importer = BaseImporter(woningbouwplannen_schema, engine)
@@ -102,7 +98,7 @@ def test_invalid_numeric_datatype_scale(
     assert not record[1]["numeric_scale"]
 
 
-def test_biginteger_datatype(here, engine, woningbouwplannen_schema, gebieden_schema, dbsession):
+def test_biginteger_datatype(here, engine, woningbouwplannen_schema, gebieden_schema):
     """Prove that when biginter is used as datatype in schema, the datatype
     in the database is set to datatype int(8) instead of int(4)"""
     importer = BaseImporter(woningbouwplannen_schema, engine)
@@ -121,7 +117,7 @@ def test_biginteger_datatype(here, engine, woningbouwplannen_schema, gebieden_sc
     assert record.numeric_precision == 64
 
 
-def test_add_column_comment(here, engine, woningbouwplannen_schema, dbsession):
+def test_add_column_comment(here, engine, woningbouwplannen_schema):
     """Prove that a column comment is added as defined in the schema as field description"""
     importer = BaseImporter(woningbouwplannen_schema, engine)
     importer.generate_db_objects("woningbouwplan", ind_tables=True, ind_extra_index=False)
@@ -140,7 +136,7 @@ def test_add_column_comment(here, engine, woningbouwplannen_schema, dbsession):
     assert record.description == "Naam van het project"
 
 
-def test_add_table_comment(here, engine, woningbouwplannen_schema, dbsession):
+def test_add_table_comment(here, engine, woningbouwplannen_schema):
     """Prove that a table comment is added as defined in the schema as table description"""
     importer = BaseImporter(woningbouwplannen_schema, engine)
     importer.generate_db_objects("woningbouwplan", ind_tables=True, ind_extra_index=False)
@@ -160,7 +156,7 @@ def test_add_table_comment(here, engine, woningbouwplannen_schema, dbsession):
     )
 
 
-def test_create_table_db_schema(here, engine, woningbouwplannen_schema, dbsession):
+def test_create_table_db_schema(here, engine, woningbouwplannen_schema):
     """Prove that a table is created in given DB schema."""
     engine.execute("CREATE SCHEMA IF NOT EXISTS schema_foo_bar;")
     importer = BaseImporter(woningbouwplannen_schema, engine)
@@ -176,7 +172,7 @@ def test_create_table_db_schema(here, engine, woningbouwplannen_schema, dbsessio
     assert record.schemaname == "schema_foo_bar"
 
 
-def test_create_table_no_db_schema(here, engine, woningbouwplannen_schema, dbsession):
+def test_create_table_no_db_schema(here, engine, woningbouwplannen_schema):
     """Prove that a table is created in DB schema public if no DB schema is given."""
     importer = BaseImporter(woningbouwplannen_schema, engine)
     importer.generate_db_objects("woningbouwplan", None, ind_tables=True, ind_extra_index=False)
